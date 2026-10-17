@@ -37,9 +37,13 @@
 
 <script>
 // 加密参数（由本地工具生成，与密文配套）
-const SALT = atob('ZZPw9poD5i/0mxC4PsyPEA==');
-const IV = atob('xQ2Q30oM/Sj4pfSb');
-const CIPHER = atob('yGL9aGrwSfaPzmgTFOOkdWDz5btAun3SFNQpeg1bKaLBluxiJilR3OWRoWNUrbs9zazAesGFvTQuMnI3rTP5HGMGxmXQp02VkW+owMJENlE2VAWjGQBky8nTr3haTIdiMN3NAfpHy62K16uKCdXY3G8RLu/eGGuvC7HUnQv7VdDNekFJ0BT5');
+function fromBase64(value) {
+  return Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
+}
+
+const SALT = fromBase64('ZZPw9poD5i/0mxC4PsyPEA==');
+const IV = fromBase64('xQ2Q30oM/Sj4pfSb');
+const CIPHER = fromBase64('yGL9aGrwSfaPzmgTFOOkdWDz5btAun3SFNQpeg1bKaLBluxiJilR3OWRoWNUrbs9zazAesGFvTQuMnI3rTP5HGMGxmXQp02VkW+owMJENlE2VAWjGQBky8nTr3haTIdiMN3NAfpHy62K16uKCdXY3G8RLu/eGGuvC7HUnQv7VdDNekFJ0BT5');
 const ITERATIONS = 310000;
 
 const enc = new TextEncoder();
