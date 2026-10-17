@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理区 - jjbwxw</title>
+  <style>
+    body {
+      font-family: -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+      background: #fff; color: #111; max-width: 640px;
+      margin: 60px auto; padding: 0 20px; line-height: 1.7;
+    }
+    input[type=password] {
+      font-size: 16px; padding: 8px 12px; width: 260px;
+      border: 1px solid #ccc; border-radius: 6px;
+    }
+    button {
+      font-size: 15px; padding: 8px 18px; margin-left: 8px;
+      border: none; border-radius: 6px; background: #333; color: #fff;
+      cursor: pointer;
+    }
+    button:hover { background: #555; }
+    #msg { font-size: 14px; margin-top: 12px; }
+    #content { margin-top: 24px; white-space: pre-wrap; }
+    a.back { font-size: 13px; color: #888; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <p><a class="back" href="./">&larr; 返回主页</a></p>
+  <h1>管理区</h1>
+  <p>请输入密码以查看内容。</p>
+
+  <input type="password" id="pwd" placeholder="密码" autocomplete="off">
+  <button id="unlock">解锁</button>
+  <div id="msg"></div>
+  <div id="content" hidden></div>
+
+<script>
+// 加密参数（由本地工具生成，与密文配套）
+const SALT = atob('13vUwsgWzGFyDuSQeFcm6w==');
+const IV = atob('leAoo2OQ5d7Ozha1');
+const CIPHER = atob('LYCjkH062hLxrmlaJ7BTS1+vh4jLRTL+KQVQ2ZyAp6uBmsAbZ52w+wufBryDl5ho+HsPyhLhQaGdBXotswnTcgoNTXIPf6qykm6pOZEDz08UfzBM9fXaQ6oVLD/3av+vIC3Xtqcavo0lkyZEqPwvJhidR91dYIoFAzxMapf90xcCaWn6bHO3');
+const ITERATIONS = 310000;
+
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+const pwdInput = document.getElementById('pwd');
+const unlockBtn = document.getElementById('unlock');
+const msgEl = document.getElementById('msg');
+const contentEl = document.getElementById('content');
+
+function overlay() {
+  unlockBtn.disabled = true;
+  unlockBtn.textContent = '解密中…';
+}
+
+function release() {
+  unlockBtn.disabled = false;
+  unlockBtn.textContent = '解锁';
+}
+
+async function decrypt(password) {
+  // 1. PBKDF2 派生密钥
+  const baseKey = await crypto.subtle.importKey(
+    'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
+  );
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: SALT, iterations: ITERATIONS, hash: 'SHA-256' },
+    baseKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['decrypt']
+  );
+  // 2. AES-GCM 解密
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: IV }, key, CIPHER);
+  return dec.decode(pt);
+}
+
+unlockBtn.addEventListener('click', async () => {
+  const pwd = pwdInput.value;
+  if (!pwd) { msgEl.textContent = '请输入密码'; return; }
+  msgEl.textContent = '';
+  overlay();
+  try {
+    const text = await decrypt(pwd);
+    contentEl.textContent = text;
+    contentEl.hidden = false;
+    msgEl.textContent = '';
+    pwdInput.value = '';
+  } catch (e) {
+    contentEl.hidden = true;
+    msgEl.textContent = '密码错误，无法解密。';
+  } finally {
+    release();
+  }
+});
+
+pwdInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') unlockBtn.click(); });
+pwdInput.focus();
+</script>
+</body>
+</html>
