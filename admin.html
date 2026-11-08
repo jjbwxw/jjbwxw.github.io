@@ -20,6 +20,7 @@
       cursor: pointer;
     }
     button:hover { background: #555; }
+    button:disabled { background: #999; cursor: not-allowed; }
     #msg { font-size: 14px; margin-top: 12px; }
     #content { margin-top: 24px; white-space: pre-wrap; }
     a.back { font-size: 13px; color: #888; text-decoration: none; }
@@ -61,6 +62,69 @@ function overlay() {
 function release() {
   unlockBtn.disabled = false;
   unlockBtn.textContent = '解锁';
+  pwdInput.disabled = false;
+}
+
+// SECTION: guard
+const STORE_KEY = 'jjbwxw.admin.guard';
+const FREE_ATTEMPTS = 3;
+const BASE_LOCK_MS = 30000;
+const MAX_LOCK_MS = 900000;
+
+const guard = readGuard();
+let timer = null;
+
+function readGuard() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+    return { fails: Number(raw.fails) || 0, until: Number(raw.until) || 0 };
+  } catch (e) {
+    return { fails: 0, until: 0 };
+  }
+}
+
+function saveGuard() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(guard)); } catch (e) {}
+}
+
+function lockMs(fails) {
+  const over = Math.max(fails - FREE_ATTEMPTS, 0);
+  return Math.min(BASE_LOCK_MS * Math.pow(2, over), MAX_LOCK_MS);
+}
+
+function locked() {
+  return guard.until > Date.now();
+}
+
+function secs(ms) {
+  const t = Math.max(Math.ceil(ms / 1000), 1);
+  return t < 60 ? t + ' 秒' : Math.floor(t / 60) + ' 分 ' + (t % 60) + ' 秒';
+}
+
+function paintLock() {
+  unlockBtn.disabled = true;
+  pwdInput.disabled = true;
+  unlockBtn.textContent = '已锁定';
+  contentEl.hidden = true;
+  msgEl.textContent = '尝试次数过多，请在 ' + secs(guard.until - Date.now()) + ' 后重试。';
+}
+
+function ready() {
+  clearInterval(timer);
+  timer = null;
+  release();
+}
+
+function startCountdown() {
+  clearInterval(timer);
+  timer = null;
+  if (!locked()) return;
+  paintLock();
+  timer = setInterval(() => {
+    if (locked()) { paintLock(); return; }
+    ready();
+    msgEl.textContent = '锁定已解除，可以继续尝试。';
+  }, 1000);
 }
 
 async function decrypt(password) {
@@ -81,6 +145,7 @@ async function decrypt(password) {
 }
 
 unlockBtn.addEventListener('click', async () => {
+  if (locked()) { paintLock(); return; }
   const pwd = pwdInput.value;
   if (!pwd) { msgEl.textContent = '请输入密码'; return; }
   msgEl.textContent = '';
@@ -91,15 +156,30 @@ unlockBtn.addEventListener('click', async () => {
     contentEl.hidden = false;
     msgEl.textContent = '';
     pwdInput.value = '';
+    guard.fails = 0;
+    guard.until = 0;
+    saveGuard();
   } catch (e) {
     contentEl.hidden = true;
-    msgEl.textContent = '密码错误，无法解密。';
+    pwdInput.value = '';
+    guard.fails += 1;
+    const wait = lockMs(guard.fails);
+    if (locked()) { startCountdown(); return; }
+    if (guard.fails >= FREE_ATTEMPTS) {
+      guard.until = Date.now() + wait;
+      saveGuard();
+      startCountdown();
+      return;
+    }
+    saveGuard();
+    msgEl.textContent = '密码错误，无法解密。还可免费尝试 ' + (FREE_ATTEMPTS - guard.fails) + ' 次。';
   } finally {
-    release();
+    if (!locked()) ready();
   }
 });
 
 pwdInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') unlockBtn.click(); });
+startCountdown();
 pwdInput.focus();
 </script>
 </body>
