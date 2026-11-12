@@ -125,6 +125,20 @@
     }
     .content-bar { margin-top: 10px; display: flex; gap: 8px; }
     .content-bar[hidden] { display: none; }
+    #filesSection { margin-top: 32px; }
+    #filesSection h2 { margin: 0 0 4px; font: 500 18px/1.3 var(--sans); }
+    .files-intro { color: var(--ink-2); font-size: 13px; margin: 0 0 10px; }
+    .file-list { display: flex; flex-direction: column; gap: 8px; }
+    .file-item {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; padding: 10px 14px;
+      background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    }
+    .file-meta { min-width: 0; }
+    .file-name { font: 14px var(--mono); word-break: break-all; }
+    .file-size { font-size: 12px; color: var(--muted); }
+    #filesMsg { font-size: 13px; color: var(--ink-2); margin-top: 8px; min-height: 1.4em; }
+    #filesMsg.bad { color: var(--danger); }
     a.back { font-size: 13px; color: var(--muted); text-decoration: none; }
     a.back:hover { color: var(--green); }
   </style>
@@ -153,6 +167,13 @@
         <button class="ghost" id="copy" type="button">复制</button>
         <button class="ghost" id="relock" type="button">重新锁定</button>
       </div>
+
+      <div id="filesSection" hidden>
+        <h2>加密文件</h2>
+        <p class="files-intro">同样在浏览器里解密，点击下载拿到的就是原文件。</p>
+        <div class="file-list" id="fileList"></div>
+        <div id="filesMsg"></div>
+      </div>
     </main>
   </div>
 
@@ -178,6 +199,128 @@ const copyBtn = document.getElementById('copy');
 const relockBtn = document.getElementById('relock');
 const contentBar = document.getElementById('contentBar');
 let plainText = '';
+
+// SECTION: 加密文件库
+const filesSection = document.getElementById('filesSection');
+const fileList = document.getElementById('fileList');
+const filesMsg = document.getElementById('filesMsg');
+let fileKey = null;
+const fileURLs = []; // 下载时创建的 Blob URL，重新锁定时统一撤销
+
+function humanSize(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+  return (n / 1024 / 1024).toFixed(2) + ' MB';
+}
+
+async function loadFileVault(password) {
+  fileKey = null;
+  filesSection.hidden = true;
+  fileList.textContent = '';
+  filesMsg.textContent = '';
+  filesMsg.classList.remove('bad');
+  let index;
+  try {
+    const res = await fetch('private/index.json', { cache: 'no-store' });
+    if (res.status === 404) return; // 还没有文件库，整个区块不显示
+    if (!res.ok) throw new Error('index');
+    index = await res.json();
+  } catch (e) { return; }
+  filesSection.hidden = false;
+  try {
+    // 与 encfile.mjs 同一套派生方式：密码 + 清单 salt → AES-GCM 密钥
+    const base = await crypto.subtle.importKey(
+      'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
+    );
+    const key = await crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt: fromBase64(index.manifest.salt), iterations: index.manifest.iterations || 310000, hash: 'SHA-256' },
+      base,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['decrypt']
+    );
+    const mRes = await fetch('private/' + index.manifest.file, { cache: 'no-store' });
+    if (!mRes.ok) throw new Error('manifest');
+    const mRaw = await mRes.arrayBuffer();
+    const manifest = JSON.parse(dec.decode(await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: fromBase64(index.manifest.iv) }, key, mRaw
+    )));
+    fileKey = key;
+    renderFiles(manifest.files || []);
+  } catch (e) {
+    filesMsg.textContent = '加密清单与这个密码不配套，无法列出文件。';
+    filesMsg.classList.add('bad');
+  }
+}
+
+function renderFiles(files) {
+  fileList.textContent = '';
+  if (!files.length) {
+    filesMsg.textContent = '文件库还是空的。';
+    return;
+  }
+  filesMsg.textContent = '';
+  for (const f of files) {
+    const item = document.createElement('div');
+    item.className = 'file-item';
+    const meta = document.createElement('div');
+    meta.className = 'file-meta';
+    const nm = document.createElement('div');
+    nm.className = 'file-name';
+    nm.textContent = f.name;
+    const sz = document.createElement('div');
+    sz.className = 'file-size';
+    sz.textContent = humanSize(f.size);
+    meta.append(nm, sz);
+    const btn = document.createElement('button');
+    btn.className = 'ghost';
+    btn.type = 'button';
+    btn.textContent = '下载';
+    btn.addEventListener('click', () => downloadFile(f, btn));
+    item.append(meta, btn);
+    fileList.append(item);
+  }
+}
+
+async function downloadFile(f, btn) {
+  if (!fileKey) return;
+  btn.disabled = true;
+  try {
+    const res = await fetch('private/' + f.path, { cache: 'no-store' });
+    if (!res.ok) throw new Error('fetch');
+    const pt = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: fromBase64(f.iv) },
+      fileKey,
+      await res.arrayBuffer()
+    );
+    const url = URL.createObjectURL(new Blob([pt], { type: f.mime || 'application/octet-stream' }));
+    fileURLs.push(url);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = f.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    filesMsg.textContent = '已开始下载：' + f.name;
+    filesMsg.classList.remove('bad');
+  } catch (e) {
+    filesMsg.textContent = '解密失败，文件可能损坏或与清单不配套。';
+    filesMsg.classList.add('bad');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// 重新锁定 / 解锁失败时清空文件库状态（密钥、列表、Blob URL）
+function clearFileVault() {
+  fileKey = null;
+  fileURLs.forEach((u) => URL.revokeObjectURL(u));
+  fileURLs.length = 0;
+  fileList.textContent = '';
+  filesMsg.textContent = '';
+  filesMsg.classList.remove('bad');
+  filesSection.hidden = true;
+}
 
 function overlay() {
   unlockBtn.disabled = true;
@@ -232,6 +375,7 @@ function paintLock() {
   unlockBtn.textContent = '已锁定';
   contentEl.hidden = true;
   contentBar.hidden = true;
+  clearFileVault();
   msgEl.textContent = '尝试次数过多，请在 ' + secs(guard.until - Date.now()) + ' 后重试。';
   msgEl.classList.add('bad');
 }
@@ -290,10 +434,12 @@ unlockBtn.addEventListener('click', async () => {
     guard.fails = 0;
     guard.until = 0;
     saveGuard();
+    loadFileVault(pwd); // 文件库用同一个密码，加载不阻塞主流程
   } catch (e) {
     contentEl.hidden = true;
     contentBar.hidden = true;
     plainText = '';
+    clearFileVault();
     pwdInput.value = '';
     guard.fails += 1;
     const wait = lockMs(guard.fails);
@@ -342,6 +488,7 @@ relockBtn.addEventListener('click', () => {
   contentEl.textContent = '';
   contentEl.hidden = true;
   contentBar.hidden = true;
+  clearFileVault();
   pwdInput.value = '';
   pwdInput.type = 'password';
   eyeBtn.textContent = '显示';

@@ -4,6 +4,8 @@
 //   node gen.mjs --password 你的密码 "要加密的内容"   → 沿用指定密码换内容
 // 输出：密文写入 tools/admin_data.json，并自动把 SALT/IV/CIPHER/ITERATIONS
 //       四个常量同步进仓库根目录的 admin.html（改完提交推送即可上线）
+// 注意：private/ 下的加密文件库用的是同一个密码。若换密码，除了换管理区密文，
+//       还要用 node tools/encfile.mjs rotate --old 旧密码 --new 新密码 把文件库迁移过去。
 import { randomBytes } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { webcrypto } from 'node:crypto';

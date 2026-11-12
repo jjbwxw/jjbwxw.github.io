@@ -1,0 +1,9 @@
+{
+  "v": 1,
+  "manifest": {
+    "file": "manifest.enc",
+    "salt": "GTBTaUoWNAZVKsMu78wLPQ==",
+    "iv": "KzbF5gg5Nxw8w7t8",
+    "iterations": 310000
+  }
+}
