@@ -4,37 +4,157 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>管理区 - jjbwxw</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>管理区 - jjbwxw</title>
   <style>
+    /* 配色与主页 index.html 对齐，另加自动深色模式 */
+    :root {
+      color-scheme: light dark;
+      --paper: #f4f6f3;
+      --surface: #ffffff;
+      --ink: #20332f;
+      --ink-2: #596962;
+      --muted: #616e67;
+      --line: rgba(32, 51, 47, 0.09);
+      --line-strong: rgba(32, 51, 47, 0.16);
+      --green: #176b52;
+      --danger: #b3423a;
+      --sans: "Segoe UI", "Microsoft YaHei", sans-serif;
+      --mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --paper: #161d1a;
+        --surface: #1e2724;
+        --ink: #e6ebe8;
+        --ink-2: #a9b5af;
+        --muted: #8b978f;
+        --line: rgba(230, 235, 232, 0.10);
+        --line-strong: rgba(230, 235, 232, 0.20);
+        --green: #5db994;
+        --danger: #e28d85;
+      }
+    }
+    * { box-sizing: border-box; }
     body {
-      font-family: -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif;
-      background: #fff; color: #111; max-width: 640px;
-      margin: 60px auto; padding: 0 20px; line-height: 1.7;
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.7;
     }
-    input[type=password] {
-      font-size: 16px; padding: 8px 12px; width: 260px;
-      border: 1px solid #ccc; border-radius: 6px;
+    .site-line { height: 4px; background: var(--green); }
+    .shell { max-width: 640px; margin: 0 auto; padding: 0 20px; }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--line);
     }
-    button {
-      font-size: 15px; padding: 8px 18px; margin-left: 8px;
-      border: none; border-radius: 6px; background: #333; color: #fff;
+    .brand { font: 500 16px/1 var(--mono); text-decoration: none; color: inherit; }
+    .brand span { color: var(--green); }
+    main { padding: 48px 0 72px; }
+    h1 { margin: 0 0 8px; font: 500 32px/1.25 var(--sans); }
+    .intro { color: var(--ink-2); margin: 0 0 20px; }
+    .gate { display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch; }
+    .pwd-wrap { position: relative; flex: 1 1 240px; }
+    input[type=password], input[type=text] {
+      width: 100%;
+      font: 16px var(--sans);
+      padding: 10px 64px 10px 12px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+    }
+    input:focus-visible { outline: 2px solid var(--green); outline-offset: 0; }
+    .eye {
+      position: absolute;
+      right: 4px;
+      top: 50%;
+      transform: translateY(-50%);
+      border: none;
+      background: none;
+      color: var(--muted);
+      cursor: pointer;
+      font: 13px var(--mono);
+      padding: 6px 10px;
+      border-radius: 6px;
+    }
+    .eye:hover { color: var(--green); background: var(--line); }
+    button.act {
+      font: 14px var(--sans);
+      padding: 10px 18px;
+      border: 1px solid var(--ink);
+      border-radius: 8px;
+      background: var(--ink);
+      color: var(--paper);
       cursor: pointer;
     }
-    button:hover { background: #555; }
-    button:disabled { background: #999; cursor: not-allowed; }
-    #msg { font-size: 14px; margin-top: 12px; }
-    #content { margin-top: 24px; white-space: pre-wrap; }
-    a.back { font-size: 13px; color: #888; text-decoration: none; }
+    button.act:hover { opacity: 0.85; }
+    button.act:disabled {
+      background: var(--line-strong);
+      border-color: transparent;
+      color: var(--muted);
+      cursor: not-allowed;
+    }
+    button.ghost {
+      font: 13px var(--sans);
+      padding: 8px 14px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink-2);
+      cursor: pointer;
+    }
+    button.ghost:hover { color: var(--green); border-color: var(--green); }
+    #msg { font-size: 14px; color: var(--ink-2); margin-top: 12px; min-height: 1.5em; }
+    #msg.bad { color: var(--danger); }
+    #content {
+      margin-top: 20px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      font: 14px/1.7 var(--mono);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .content-bar { margin-top: 10px; display: flex; gap: 8px; }
+    .content-bar[hidden] { display: none; }
+    a.back { font-size: 13px; color: var(--muted); text-decoration: none; }
+    a.back:hover { color: var(--green); }
   </style>
 </head>
 <body>
-  <p><a class="back" href="./">&larr; 返回主页</a></p>
-  <h1>管理区</h1>
-  <p>请输入密码以查看内容。</p>
+  <div class="site-line"></div>
+  <div class="shell">
+    <header>
+      <a class="brand" href="./">jjbwxw<span>&thinsp;/&thinsp;admin</span></a>
+      <a class="back" href="./">返回主页</a>
+    </header>
+    <main>
+      <h1>管理区</h1>
+      <p class="intro">输入密码解锁。解密在你的浏览器里完成，内容不会被上传。</p>
 
-  <input type="password" id="pwd" placeholder="密码" autocomplete="off">
-  <button id="unlock">解锁</button>
-  <div id="msg"></div>
-  <div id="content" hidden></div>
+      <div class="gate">
+        <div class="pwd-wrap">
+          <input type="password" id="pwd" placeholder="密码" autocomplete="off" enterkeyhint="go">
+          <button class="eye" id="eye" type="button" title="显示 / 隐藏密码">显示</button>
+        </div>
+        <button class="act" id="unlock">解锁</button>
+      </div>
+      <div id="msg"></div>
+      <div id="content" hidden></div>
+      <div class="content-bar" id="contentBar" hidden>
+        <button class="ghost" id="copy" type="button">复制</button>
+        <button class="ghost" id="relock" type="button">重新锁定</button>
+      </div>
+    </main>
+  </div>
 
 <script>
 // 加密参数（由本地工具生成，与密文配套）
@@ -53,6 +173,11 @@ const pwdInput = document.getElementById('pwd');
 const unlockBtn = document.getElementById('unlock');
 const msgEl = document.getElementById('msg');
 const contentEl = document.getElementById('content');
+const eyeBtn = document.getElementById('eye');
+const copyBtn = document.getElementById('copy');
+const relockBtn = document.getElementById('relock');
+const contentBar = document.getElementById('contentBar');
+let plainText = '';
 
 function overlay() {
   unlockBtn.disabled = true;
@@ -106,7 +231,9 @@ function paintLock() {
   pwdInput.disabled = true;
   unlockBtn.textContent = '已锁定';
   contentEl.hidden = true;
+  contentBar.hidden = true;
   msgEl.textContent = '尝试次数过多，请在 ' + secs(guard.until - Date.now()) + ' 后重试。';
+  msgEl.classList.add('bad');
 }
 
 function ready() {
@@ -124,6 +251,7 @@ function startCountdown() {
     if (locked()) { paintLock(); return; }
     ready();
     msgEl.textContent = '锁定已解除，可以继续尝试。';
+    msgEl.classList.remove('bad');
   }, 1000);
 }
 
@@ -152,15 +280,20 @@ unlockBtn.addEventListener('click', async () => {
   overlay();
   try {
     const text = await decrypt(pwd);
+    plainText = text;
     contentEl.textContent = text;
     contentEl.hidden = false;
+    contentBar.hidden = false;
     msgEl.textContent = '';
+    msgEl.classList.remove('bad');
     pwdInput.value = '';
     guard.fails = 0;
     guard.until = 0;
     saveGuard();
   } catch (e) {
     contentEl.hidden = true;
+    contentBar.hidden = true;
+    plainText = '';
     pwdInput.value = '';
     guard.fails += 1;
     const wait = lockMs(guard.fails);
@@ -173,9 +306,47 @@ unlockBtn.addEventListener('click', async () => {
     }
     saveGuard();
     msgEl.textContent = '密码错误，无法解密。还可免费尝试 ' + (FREE_ATTEMPTS - guard.fails) + ' 次。';
+    msgEl.classList.add('bad');
   } finally {
     if (!locked()) ready();
   }
+});
+
+// 密码显示/隐藏切换
+eyeBtn.addEventListener('click', () => {
+  const show = pwdInput.type === 'password';
+  pwdInput.type = show ? 'text' : 'password';
+  eyeBtn.textContent = show ? '隐藏' : '显示';
+});
+
+// 一键复制已解锁的内容（clipboard 不可用时退回 execCommand）
+copyBtn.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(plainText);
+    msgEl.textContent = '已复制到剪贴板。';
+  } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = plainText;
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e2) { }
+    ta.remove();
+    msgEl.textContent = ok ? '已复制到剪贴板。' : '复制失败，请手动选择文本复制。';
+  }
+});
+
+// 重新锁定：清掉明文和输入框，回到未解锁状态（防爆破计数保持已清零）
+relockBtn.addEventListener('click', () => {
+  plainText = '';
+  contentEl.textContent = '';
+  contentEl.hidden = true;
+  contentBar.hidden = true;
+  pwdInput.value = '';
+  pwdInput.type = 'password';
+  eyeBtn.textContent = '显示';
+  msgEl.textContent = '已重新锁定。';
+  pwdInput.focus();
 });
 
 pwdInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') unlockBtn.click(); });
